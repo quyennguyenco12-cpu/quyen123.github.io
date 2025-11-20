@@ -1,0 +1,120 @@
+<!doctype html><html><head></head><body><!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>DinhVicuuHo  Céu HÙ Li Låt</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+	<style>
+		body {
+			margin: 0;
+			font-family: Arial;
+		}
+
+		#map {
+			height: 100vh;
+		}
+
+		.btn {
+			position: fixed;
+			bottom: 20px;
+			left: 50%;
+			transform: translateX(-50%);
+			padding: 14px 20px;
+			background: #ff4747;
+			color: #fff;
+			border-radius: 10px;
+			font-size: 18px;
+			border: none;
+			z-index: 1000;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="map"></div>
+	<button class="btn" id="sendBtn">=Í Gíi vË trí céu hÙ</button>
+
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+	<script>
+		// 1. Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyAV8tUjY4Iu1RL2pY21H6wY6v5xBTmMbBo",
+  authDomain: "flood-map-2025.firebaseapp.com",
+  projectId: "flood-map-2025",
+  storageBucket: "flood-map-2025.appspot.com",
+  messagingSenderId: "814331234512",
+  appId: "1:814331234512:web:2fead33ee1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 2. Map
+const map = L.map('map').setView([12.0, 108.0], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+
+const markers = {};
+
+// 3. Load realtime të Firestore
+db.collection("rescue").onSnapshot(snapshot => {
+  snapshot.docChanges().forEach(change => {
+    const data = change.doc.data();
+    const now = Date.now();
+
+    // Xóa iÃm quá 24h
+    if(now - data.time > 24*60*60*1000){
+      db.collection("rescue").doc(change.doc.id).delete();
+      if(markers[change.doc.id]){
+        map.removeLayer(markers[change.doc.id]);
+      }
+      return;
+    }
+
+    if(change.type === "added"){
+      let color = 'blue';
+      if(data.severity==='urgent') color='orange';
+      if(data.severity==='critical') color='red';
+
+      const marker = L.circleMarker([data.lat, data.lng], {radius:8, color:color, fillOpacity:0.8})
+        .addTo(map)
+        .bindPopup(`
+          <b>=Í YÊU C¦U CèU HØ</b><br>
+          Méc Ù: ${data.severity || 'normal'}<br>
+          ThÝi gian: ${new Date(data.time).toLocaleString()}<br>
+          <a href="tel:112">=Þ GÍi céu hÙ 112</a>
+        `);
+      markers[change.doc.id] = marker;
+    }
+  });
+});
+
+// 4. Gíi tÍa Ù céu hÙ
+document.getElementById("sendBtn").onclick = () => {
+  if(!navigator.geolocation){
+    return alert("iÇn tho¡i không h× trã Ënh vË.");
+  }
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    // hÏi méc Ù
+    let severity = prompt("Méc Ù nguy hiÃm: normal, urgent, critical", "urgent");
+    if(!severity) severity="normal";
+
+    db.collection("rescue").add({ lat,lng,time:Date.now(),severity });
+    alert(" ã gíi vË trí céu hÙ!");
+  }, err => {
+    alert("Không l¥y °ãc vË trí: "+err.message);
+  }, {enableHighAccuracy:true});
+};
+	</script>
+
+</body>
+
+</html></body><html>
